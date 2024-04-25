@@ -1,0 +1,109 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Deceive</name>
+    </assembly>
+    <members>
+        <member name="M:Deceive.ConfigProxy.#ctor(System.Int32)">
+            Starts a new client configuration proxy at a random port. The proxy will modify any responses
+            to point the chat servers to our local setup. This function returns the random port that the HTTP
+            server is listening on.
+        </member>
+        <member name="M:Deceive.ConfigProxy.ProxyAndRewriteResponseAsync(EmbedIO.IHttpContext)">
+            Proxies any request made to this web server to the clientconfig service. Rewrites the response
+            to have any chat servers point to localhost at the specified port.
+        </member>
+        <member name="F:Deceive.GamePromptForm.components">
+            <summary>
+            Required designer variable.
+            </summary>
+        </member>
+        <member name="M:Deceive.GamePromptForm.Dispose(System.Boolean)">
+            <summary>
+            Clean up any resources being used.
+            </summary>
+            <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        </member>
+        <member name="M:Deceive.GamePromptForm.InitializeComponent">
+            <summary>
+            Required method for Designer support - do not modify
+            the contents of this method with the code editor.
+            </summary>
+        </member>
+        <member name="T:Deceive.LaunchGame">
+            <summary>
+                Which game to automatically launch when Deceive is started.
+            </summary>
+        </member>
+        <member name="F:Deceive.LaunchGame.LoL">
+            <summary>
+                Attempt to start League of Legends.
+            </summary>
+        </member>
+        <member name="F:Deceive.LaunchGame.LoR">
+            <summary>
+                Attempt to start Legends of Runeterra.
+            </summary>
+        </member>
+        <member name="F:Deceive.LaunchGame.VALORANT">
+            <summary>
+                Attempt to start VALORANT.
+            </summary>
+        </member>
+        <member name="F:Deceive.LaunchGame.RiotClient">
+            <summary>
+                Attempt to launch the Riot Client.
+            </summary>
+        </member>
+        <member name="F:Deceive.LaunchGame.Prompt">
+            <summary>
+                Display a dialog asking which game to launch.
+            </summary>
+        </member>
+        <member name="F:Deceive.LaunchGame.Auto">
+            <summary>
+                Automatically pick which game to launch, using either the configured
+                default launch method or prompting, depending on previous runs.
+            </summary>
+        </member>
+        <member name="T:Deceive.Properties.Resources">
+            <summary>
+              A strongly-typed resource class, for looking up localized strings, etc.
+            </summary>
+        </member>
+        <member name="P:Deceive.Properties.Resources.ResourceManager">
+            <summary>
+              Returns the cached ResourceManager instance used by this class.
+            </summary>
+        </member>
+        <member name="P:Deceive.Properties.Resources.Culture">
+            <summary>
+              Overrides the current thread's CurrentUICulture property for all
+              resource lookups using this strongly typed resource class.
+            </summary>
+        </member>
+        <member name="P:Deceive.Properties.Resources.Certificate">
+            <summary>
+              Looks up a localized resource of type System.Byte[].
+            </summary>
+        </member>
+        <member name="P:Deceive.Properties.Resources.DeceiveIcon">
+            <summary>
+              Looks up a localized resource of type System.Drawing.Icon similar to (Icon).
+            </summary>
+        </member>
+        <member name="M:Deceive.StartupHandler.Main(Deceive.LaunchGame,System.String,System.String,System.String)">
+            <param name="args">The game to be launched, or automatically determined if not passed.</param>
+            <param name="gamePatchline">The patchline to be used for launching the game.</param>
+            <param name="riotClientParams">Any extra parameters to be passed to the Riot Client.</param>
+            <param name="gameParams">Any extra parameters to be passed to the launched game.</param>
+        </member>
+        <member name="M:Deceive.StartupHandler.StartDeceiveAsync(Deceive.LaunchGame,System.String,System.String,System.String)">
+            Actual main function. Wrapped into a separate function so we can catch exceptions.
+        </member>
+        <member name="M:Deceive.Utils.CheckForUpdatesAsync">
+            Asynchronously checks if the current version of Deceive is the latest version.
+            If not, and the user has not dismissed the message before, an alert is shown.
+        </member>
+    </members>
+</doc>
