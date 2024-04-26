@@ -52,76 +52,59 @@ internal class MainController : ApplicationContext
     }
 
     private async Task ServeClientsAsync(TcpListener server, string chatHost, int chatPort)
-    {
+    {    
         var cert = new X509Certificate2(Resources.Certificate);
 
         while (true)
         {
             try
             {
-                // no need to shutdown, we received a new request
-                ShutdownToken?.Cancel();
-                ShutdownToken = null;
-
                 var incoming = await server.AcceptTcpClientAsync();
-                var sslIncoming = new SslStream(incoming.GetStream());
+                var sslIncoming = new SslStream(incoming.GetStream(), leaveInnerStreamOpen: false);
                 await sslIncoming.AuthenticateAsServerAsync(cert);
 
-                TcpClient outgoing;
-                while (true)
+                TcpClient outgoing = null;
+                int retryCount = 0;
+                const int maxRetries = 3;
+                while (retryCount < maxRetries)
                 {
                     try
                     {
-                        outgoing = new TcpClient(chatHost, chatPort);
+                        outgoing = new TcpClient();
+                        await outgoing.ConnectAsync(chatHost, chatPort);
                         break;
                     }
                     catch (SocketException e)
                     {
-                        Trace.WriteLine(e);
-                        var result = MessageBox.Show(
-                            "Unable to connect to the chat server. Please check your internet connection. " +
-                            "If this issue persists and you can connect to chat normally without Deceive, " +
-                            "please file a bug report through GitHub (https://github.com/molenzwiebel/Deceive) or Discord.",
-                            StartupHandler.DeceiveTitle,
-                            MessageBoxButtons.RetryCancel,
-                            MessageBoxIcon.Error,
-                            MessageBoxDefaultButton.Button1
-                        );
-                        if (result == DialogResult.Cancel)
-                            Environment.Exit(0);
+                        retryCount++;
+                        Trace.WriteLine($"Retry {retryCount} for connecting to chat server failed: {e}");
+                        if (retryCount >= maxRetries)
+                        {
+                            MessageBox.Show(
+                                "Unable to connect to the chat server after several attempts. Please check your network connection.",
+                                StartupHandler.DeceiveTitle,
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error
+                            );
+                            break;
+                        }
+                        await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, retryCount)));  // Exponential back-off
                     }
                 }
 
-                var sslOutgoing = new SslStream(outgoing.GetStream());
-                await sslOutgoing.AuthenticateAsClientAsync(chatHost);
-
-                var proxiedConnection = new ProxiedConnection(this, sslIncoming, sslOutgoing);
-                proxiedConnection.Start();
-                proxiedConnection.ConnectionErrored += (_, _) =>
+                if (outgoing?.Connected == true)
                 {
-                    Trace.WriteLine("Disconnected incoming connection.");
-                    Connections.Remove(proxiedConnection);
+                    var sslOutgoing = new SslStream(outgoing.GetStream(), leaveInnerStreamOpen: false);
+                    await sslOutgoing.AuthenticateAsClientAsync(chatHost);
 
-                    if (Connections.Count == 0)
-                    {
-                        Task.Run(ShutdownIfNoReconnect);
-                    }
-                };
-                Connections.Add(proxiedConnection);
-
-                if (!SentIntroductionText)
-                {
-                    SentIntroductionText = true;
-                    _ = Task.Run(async () =>
-                    {
-                        await Task.Delay(10_000);
-                        await SendIntroductionTextAsync();
-                    });
+                    var proxiedConnection = new ProxiedConnection(this, sslIncoming, sslOutgoing);
+                    proxiedConnection.Start();
+                    Connections.Add(proxiedConnection);
                 }
-            } catch (Exception e)
+            }
+            catch (Exception e)
             {
-                Trace.WriteLine("Failed to handle incoming connection.");
-                Trace.WriteLine(e);
+                Trace.WriteLine("Failed to handle incoming connection: " + e.Message);
             }
         }
     }
