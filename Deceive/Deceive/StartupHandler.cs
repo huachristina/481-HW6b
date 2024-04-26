@@ -22,6 +22,18 @@ internal static class StartupHandler
     {
         AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledException;
         Application.EnableVisualStyles();
+        
+        if (!CheckAndRequestPermissions())
+        {
+            MessageBox.Show(
+                "Deceive requires additional permissions to run properly. Please ensure it has the necessary permissions and try again.",
+                DeceiveTitle,
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error
+            );
+            return;
+        }
+
         try
         {
             await StartDeceiveAsync(args, gamePatchline, riotClientParams, gameParams);
@@ -29,16 +41,50 @@ internal static class StartupHandler
         catch (Exception ex)
         {
             Trace.WriteLine(ex);
-            // Show some kind of message so that Deceive doesn't just disappear.
             MessageBox.Show(
-                "Deceive encountered an error and couldn't properly initialize itself. " +
-                "Please contact the creator through GitHub (https://github.com/molenzwiebel/Deceive) or Discord.\n\n" + ex,
+                "Deceive encountered an error and couldn't properly initialize itself. Please contact the creator through GitHub (https://github.com/molenzwiebel/Deceive) or Discord.\n\n" + ex,
                 DeceiveTitle,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error,
                 MessageBoxDefaultButton.Button1
             );
         }
+    }
+
+    private static bool CheckAndRequestPermissions()
+    {
+        try
+        {
+            // Example: Check for file system access permissions
+            string testFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Deceive", "test_permission.txt");
+
+            // Attempt to write and delete a file in the application data directory
+            File.WriteAllText(testFilePath, "Permission test.");
+            File.Delete(testFilePath);
+
+            // Example: Check for network permissions by making a test request (assuming you have a server to ping)
+            using (var client = new System.Net.WebClient())
+            {
+                string result = client.DownloadString("http://example.com/test_connection");
+                if (string.IsNullOrWhiteSpace(result) || result != "Expected response")
+                {
+                    MessageBox.Show("Network permissions or connectivity issues detected.", "Permission Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return false;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log the exception details for debugging
+            Debug.WriteLine($"Permission check failed: {ex.Message}");
+
+            // Optionally, inform the user and request necessary permissions manually
+            MessageBox.Show($"Failed to verify necessary system permissions: {ex.Message}\nPlease ensure the application has the required permissions and try again.",
+                            "Permission Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return false;
+        }
+
+        return true; // Return true if all checks pass
     }
 
     /// Actual main function. Wrapped into a separate function so we can catch exceptions.
