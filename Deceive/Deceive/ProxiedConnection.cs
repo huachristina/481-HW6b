@@ -143,13 +143,15 @@ internal class ProxiedConnection
             var wrappedContent = "<xml>" + content + "</xml>";
             var xml = XDocument.Load(new StringReader(wrappedContent));
 
-            if (xml.Root is null)
-                return;
-            if (xml.Root.HasElements is false)
-                return;
+            if (xml.Root == null || !xml.Root.HasElements)
+            return;
 
             foreach (var presence in xml.Root.Elements())
             {
+                 var from = presence.Attribute("from")?.Value;
+                // Update friend status in real-time
+                MainController.UpdateFriendStatus(new FriendStatus { Jid = from, Status = targetStatus });
+
                 if (presence.Name != "presence")
                     continue;
                 if (presence.Attribute("to") is not null)
@@ -215,16 +217,26 @@ internal class ProxiedConnection
                     xElement.WriteTo(xw);
             }
 
-            var bytes = Encoding.UTF8.GetBytes(sb.ToString());
-            await Outgoing.WriteAsync(bytes, 0, bytes.Length);
-            Trace.WriteLine("<!--DECEIVE TO SERVER-->" + sb);
+            await Outgoing.WriteAsync(EncodeXml(xml), 0, EncodeXml(xml).Length);
+            Trace.WriteLine("<!--DECEIVE TO SERVER-->" + xml.ToString());
         }
         catch (Exception e)
         {
-            Trace.WriteLine(e);
-            Trace.WriteLine("Error rewriting presence.");
+            Trace.WriteLine("Error rewriting presence: " + e.Message);
         }
     }
+
+    private byte[] EncodeXml(XDocument xml)
+    {
+        var sb = new StringBuilder();
+        var xws = new XmlWriterSettings { OmitXmlDeclaration = true, Encoding = Encoding.UTF8, ConformanceLevel = ConformanceLevel.Fragment };
+        using (var xw = XmlWriter.Create(sb, xws))
+        {
+            xml.WriteTo(xw);
+        }
+        return Encoding.UTF8.GetBytes(sb.ToString());
+    }
+    
 
     private async Task SendFakePlayerPresenceAsync()
     {
