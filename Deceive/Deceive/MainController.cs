@@ -14,6 +14,12 @@ using Deceive.Properties;
 
 namespace Deceive;
 
+public class FriendStatus
+    {
+        public string Jid { get; set; }
+        public string Status { get; set; }
+    }
+
 internal class MainController : ApplicationContext
 {
     internal MainController()
@@ -25,6 +31,7 @@ internal class MainController : ApplicationContext
             BalloonTipTitle = StartupHandler.DeceiveTitle,
             BalloonTipText = "Deceive is currently masking your status. Right-click the tray icon for more options."
         };
+        TrayIcon.BalloonTipClicked += TrayIcon_BalloonTipClicked;
         TrayIcon.ShowBalloonTip(5000);
 
         LoadStatus();
@@ -32,6 +39,8 @@ internal class MainController : ApplicationContext
     }
 
     private NotifyIcon TrayIcon { get; }
+    private NotificationManager notificationManager = new NotificationManager();
+    private Dictionary<string, FriendStatus> friendsList = new Dictionary<string, FriendStatus>();
     public bool Enabled { get; set; } = true;
     public string Status { get; set; } = null!;
     private string StatusFile { get; } = Path.Combine(Persistence.DataDir, "status");
@@ -49,6 +58,24 @@ internal class MainController : ApplicationContext
     public void StartServingClients(TcpListener server, string chatHost, int chatPort)
     {
         Task.Run(() => ServeClientsAsync(server, chatHost, chatPort));
+    }
+
+    private void TrayIcon_BalloonTipClicked(object sender, EventArgs e)
+    {
+        // Assuming the sender can be cast to NotifyIcon and has a tag or similar with the ID
+        notificationManager.AcknowledgeNotification((sender as NotifyIcon)?.Tag.ToString());
+    }
+    
+    public void SomeMethodTriggeringNotifications(string message)
+    {
+        string notificationId = Guid.NewGuid().ToString(); // Unique ID for each notification
+        notificationManager.ShowNotification(notificationId, message, TrayIcon);
+    }
+
+    public async Task SomeAsyncOperation()
+    {
+        await Task.Delay(1000); // Simulating async operation
+        SomeMethodTriggeringNotifications("Operation Completed");
     }
 
     private async Task ServeClientsAsync(TcpListener server, string chatHost, int chatPort)
@@ -107,6 +134,21 @@ internal class MainController : ApplicationContext
                 Trace.WriteLine("Failed to handle incoming connection: " + e.Message);
             }
         }
+    }
+
+    public void UpdateFriendStatus(FriendStatus status)
+    {
+        if (friendsList.ContainsKey(status.Jid))
+        {
+            friendsList[status.Jid] = status;
+        }
+        else
+        {
+            friendsList.Add(status.Jid, status);
+        }
+
+        // Notify UI or other components that a friend's status has updated
+        NotifyStatusChanged(status);
     }
 
     private void UpdateTray()
@@ -253,6 +295,37 @@ internal class MainController : ApplicationContext
         {
             await SendMessageFromFakePlayerAsync("You can send the following messages to quickly change Deceive settings: online/offline/mobile/enable/disable/status");
         }
+    }
+    
+    public class NotificationManager
+    {
+        private Dictionary<string, Notification> activeNotifications = new Dictionary<string, Notification>();
+
+        public void ShowNotification(string id, string message, NotifyIcon trayIcon)
+        {
+            if (!activeNotifications.ContainsKey(id))
+            {
+                trayIcon.BalloonTipText = message;
+                trayIcon.ShowBalloonTip(5000);
+                activeNotifications[id] = new Notification { Id = id, Message = message, IsAcknowledged = false };
+            }
+        }
+
+        public void AcknowledgeNotification(string id)
+        {
+            if (activeNotifications.ContainsKey(id))
+            {
+                activeNotifications[id].IsAcknowledged = true;
+                // Additional logic to handle re-triggering if required
+            }
+        }
+    }
+
+    public class Notification
+    {
+        public string Id { get; set; }
+        public string Message { get; set; }
+        public bool IsAcknowledged { get; set; }
     }
 
     private async Task SendIntroductionTextAsync()
